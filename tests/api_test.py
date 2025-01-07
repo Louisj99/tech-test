@@ -10,3 +10,4 @@ def test_handle_user_event(client: FlaskClient) -> None:
     })
     assert response.status_code == 200
     assert response.json == {'alert': False, 'alert_codes': [], 'user_id': 1}
+# make tests for error cases + one test for each of the conditions
