@@ -1,7 +1,12 @@
 from flask.testing import FlaskClient
 
-
-def test_handle_user_event_doesnt_do_anything_yet(client: FlaskClient) -> None:
-    response = client.post("/event")
+#default test no alert codes
+def test_handle_user_event(client: FlaskClient) -> None:
+    response = client.post("/event", json={
+        "type": "deposit",
+        "amount": "42.00",
+        "user_id": 1,
+        "time": 10
+    })
     assert response.status_code == 200
-    assert response.json == {}
+    assert response.json == {'alert': False, 'alert_codes': [], 'user_id': 1}
