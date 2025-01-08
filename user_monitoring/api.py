@@ -1,8 +1,8 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import List, Dict
+from typing import List, Dict, Any
 
-from flask import Blueprint, current_app, request, jsonify
+from flask import Blueprint, current_app, request, jsonify, Response
 
 api = Blueprint("api", __name__)
 
@@ -25,13 +25,18 @@ user_transactions: Dict[int, List[UserRequest]] = defaultdict(list)
 
 
 @api.post("/event")
-def handle_user_event() -> dict:
+def handle_user_event() -> tuple[Response, int] | dict[str, str | int] | dict[str, Any]:
     current_app.logger.info("Handling user event")
+# checks if the request is json
+    if not request.is_json:
+        return jsonify({"error": "Invalid media type", "status_code": 415}), 415
 
+#checks if the request has data
     data = request.get_json()
     if not data:
-        return {"error": "Invalid JSON data", "status_code": 400}
+        return jsonify({"error": "Invalid JSON data", "status_code": 400}), 400
 
+#marshalls the data into a UserRequest object
     try:
         user_request = UserRequest(
             transaction_type=data["type"],
@@ -40,7 +45,7 @@ def handle_user_event() -> dict:
             time=data["time"]
         )
     except KeyError as e:
-        return {"error": f"Missing key: {str(e)}", "status_code": 400}
+        return jsonify({"error": f"Missing key: {str(e)}", "status_code": 400}),400
 
     current_app.logger.info(f"Received request: {user_request}")
 
@@ -87,6 +92,7 @@ def consecutive_withdrawals(user_request: UserRequest, return_request: ReturnReq
             return_request.alert_codes.append(30)
     return return_request
 
+# checks if the user's last 3 transactions have been deposits and are in increasing order
 def consecutive_large_deposits(user_request: UserRequest, return_request: ReturnRequest) -> ReturnRequest:
     transactions = user_transactions[user_request.user_id]
     # filter the transactions to get only deposits
@@ -99,7 +105,7 @@ def consecutive_large_deposits(user_request: UserRequest, return_request: Return
             return_request.alert_codes.append(300)
     return return_request
 
-
+# checks if the user has deposited more than 200 in the last 30 seconds from the last request time
 def total_deposits_in_window(user_request: UserRequest, return_request: ReturnRequest) -> ReturnRequest:
     transactions = user_transactions[user_request.user_id]
     # filter the transactions to get only deposits
